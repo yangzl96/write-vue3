@@ -9,8 +9,15 @@
 //         "packages/*/src"
 //       ]
 //     }
-import { Shared } from '@vue/shared'
-import ts from 'typescript'
-const Reactivity = {}
+// import { Shared } from '@vue/shared'
+// const Reactivity = {}
 
-export { Reactivity }
+// export { Reactivity }
+
+// 导出方法，不实现功能
+export {
+  reactive,
+  shallowReactive,
+  readonly,
+  shallowReadonly,
+} from './reactive' 

@@ -4,6 +4,8 @@
 
 import { extend } from '@vue/shared'
 import { isObject } from '../../shared/src/index'
+import { track } from './effect'
+import { TrackOpTypes } from './operators'
 import { reactive, readonly } from './reactive'
 
 // 生成 get
@@ -34,6 +36,8 @@ function createGetter(isReadonly = false, shallow = false) {
 
     if (!isReadonly) {
       // 收集依赖，等会数据变化后更新对应的视图
+      console.log('收集依赖')
+      track(target, TrackOpTypes.GET, key)
     }
     // 浅的直接返回数据
     if (shallow) {

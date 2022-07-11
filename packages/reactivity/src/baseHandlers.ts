@@ -3,9 +3,15 @@
 // 是不是深度的
 
 import { extend } from '@vue/shared'
-import { isObject } from '../../shared/src/index'
-import { track } from './effect'
-import { TrackOpTypes } from './operators'
+import {
+  isObject,
+  isArray,
+  isIntegerKey,
+  hasOwn,
+  hasChanged,
+} from '../../shared/src/index'
+import { track, trigger } from './effect'
+import { TrackOpTypes, TriggerOrType } from './operators'
 import { reactive, readonly } from './reactive'
 
 // 生成 get
@@ -54,7 +60,28 @@ function createGetter(isReadonly = false, shallow = false) {
 // 拦截设置功能
 function createSetter(shallow = false) {
   return function set(target, key, value, receiver) {
+    const oldValue = target[key] //获取老的值
+
+    // 判断是否有key 是数组的话话 比对长度,大于length是新增
+    // 否则 hasOwn 去检查key
+    let hadKey =
+      isArray(target) && isIntegerKey(key)
+        ? Number(key) < target.length
+        : hasOwn(target, key)
     const result = Reflect.set(target, key, value, receiver)
+
+    // 要区分是新增的 还是修改的
+    if (!hadKey) {
+      // 新增
+      // 在 target 上 新增 一个 key 值是 value
+      trigger(target, TriggerOrType.ADD, key, value)
+    } else if (hasChanged(oldValue, value)) {
+      // 对比值 发生变化了
+      // 修改
+      trigger(target, TriggerOrType.SET, key, value, oldValue)
+    }
+
+    // 数据更新的时候 通知对应属性的effect重新执行
     return result
   }
 }

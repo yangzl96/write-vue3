@@ -1,3 +1,5 @@
+import { isArray, isIntegerKey } from '../../shared/src/index'
+import { TriggerOrType } from './operators'
 export function effect(fn, options: any = {}) {
   // 需要让这个effect变成响应的effect，可以做到数据变化重新执行
 
@@ -65,4 +67,53 @@ export function track(target, type, key) {
     dep.add(activeEffect)
   }
   console.log(targetMap)
+}
+
+export function trigger(target, type, key?, newValue?, oldValue?) {
+  console.log(target, type, key, newValue, oldValue)
+
+  // 如果这个属性没收集过 effects ，那不需要做任何操作
+  const depsMap = targetMap.get(target)
+  if (!depsMap) return
+
+  // 将所有要执行的effect 全都存在一个新的集合，最终一起执行
+  const effects = new Set()
+
+  const add = (effectsToAdd) => {
+    // 遍历 Set[effects] 将所有effect收集起来
+    if (effectsToAdd) {
+      effectsToAdd.forEach((effect) => effects.add(effect))
+    }
+  }
+  // 1. 看修改的是不是数组长度 因为改长度影响比较大
+  if (key === 'length' && isArray(target)) {
+    depsMap.forEach((dep, key) => {
+      if (key === 'length' || key > newValue) {
+        // 1. 如果更改的是长度那么长度对应的Set[effect] 要更新
+        // 2. 或者 key 小于 length新值 那么这个索引对应的effect也要更新
+        // Array.length = 1  arr[2] = 1
+        // 2 > 1 ，所以 2对应的索引的effect 函数也要更新
+        add(dep)
+      }
+    })
+  } else {
+    // 可能是对象
+    if (key !== undefined) {
+      add(depsMap.get(key))
+    }
+    // 如果是修改数组中的 某一个索引 arr[1000] = 1000 ？那么更新索引1000对应的effect和length对应的effect
+    // 如果添加了一个索引，那么就触发长度的更新，这里有点 hack 的意思了，前面堵不住，在这再处理一次
+    switch (type) {
+      case TriggerOrType.ADD:
+        // 如果修改的是数组 同时是索引，那么length也要更新
+        if (isArray(target) && isIntegerKey(key)) {
+          add(depsMap.get('length'))
+        }
+        break
+
+      default:
+        break
+    }
+  }
+  effects.forEach((effect: any) => effect())
 }

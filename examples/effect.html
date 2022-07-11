@@ -15,11 +15,16 @@
   <script>
     console.log(VueReactivity)
     let { reactive, effect } = VueReactivity
-    let state = reactive({ name: 'zz', age: 18 })
+    let state = reactive({ name: 'zz', age: 18, arr: [1, 2, 3] })
 
     effect(() => {
-      app.innerHTML = '小明:' + state.name + ',' + state.age
+      console.log('render')
+      app.innerHTML = state.arr
     })
+
+    setTimeout(() => {
+      state.arr[100] = 1
+    }, 1000)
   </script>
 </body>
 

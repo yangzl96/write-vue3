@@ -1,8 +1,11 @@
 import { isObject } from '@vue/shared'
-const mutableHandlers = {}
-const shallowReactiveHandlers = {}
-const readonlyHandlers = {}
-const shallowReadonlyHandlers = {}
+import {
+  mutableHandlers,
+  readonlyHandlers,
+  shallowReactiveHandlers,
+  shallowReadonlyHandlers,
+} from './baseHandlers'
+
 export function reactive(target) {
   return createReactiveObject(target, false, mutableHandlers)
 }
@@ -37,6 +40,6 @@ export function createReactiveObject(target, isReadonly, baseHandlers) {
   }
   const proxy = new Proxy(target, baseHandlers)
   proxyMap.set(target, proxy)
-  
+
   return proxy
 }

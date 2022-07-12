@@ -115,5 +115,13 @@ export function trigger(target, type, key?, newValue?, oldValue?) {
         break
     }
   }
-  effects.forEach((effect: any) => effect())
+  // 遍历执行所有 effect
+  effects.forEach((effect: any) => {
+    // 如果存在 scheduler 就执行 scheduler
+    if (effect.options.scheduler) {
+      effect.options.scheduler(effect)
+    } else {
+      effect()
+    }
+  })
 }

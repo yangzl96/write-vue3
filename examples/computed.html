@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+
+<body>
+  <script src="../node_modules/@vue/reactivity/dist/reactivity.global.js"></script>
+  <script>
+    let { reactive, effect, ref, computed } = VueReactivity
+    const age = ref(18)
+    // 默认不执行，访问的时候才触发一次
+    const myAge = computed(() => {
+      console.log('computed')
+      return age.value + 10
+    })
+    //属性访问的时候 执行
+    // console.log(myAge.value)
+    // console.log(myAge.value) //缓存
+    // age.value = 100
+    // console.log(myAge.value)
+
+    // 这个effect中没有 age 但是myAge依赖了 age 同时 age变更了
+    // 那么这个effect是不是需要重新执行？
+    effect(() => {
+      console.log('effect')
+      console.log(myAge.value)
+    })
+    age.value = 500
+  </script>
+</body>
+
+</html>

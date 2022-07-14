@@ -1,5 +1,6 @@
 import { ShapeFlags } from '@vue/shared'
 import { PublicInstanceProxyHandlers } from 'packages/runtime-core/src/componentPublicInstance'
+import { isFunction, isObject } from '../../shared/src/index'
 // 组件中所有的方法
 
 // 创建实例
@@ -53,10 +54,39 @@ function setupStatefulComponent(instance) {
   // 2. 获取组件的类型 拿到组件的setup方法
   let Component = instance.type
   let { setup } = Component
-  let setupContext = createSetupContext(instance)
-  setup(instance.props, setupContext)
+  if (setup) {
+    let setupContext = createSetupContext(instance)
+    const setupResult = setup(instance.props, setupContext)
+    // 处理返回值
+    handleSetupResult(instance, setupResult)
+  } else {
+    // 完成组件的初始化
+    finishComponentSetup(instance)
+  }
   // 执行render 给到 被代理的参数 方便访问更容易
-  Component.render(instance.proxy)
+  // Component.render(instance.proxy)
+}
+
+// 给render赋值 给状态赋值
+function handleSetupResult(instance, setupResult) {
+  if (isFunction(setupResult)) {
+    instance.render = setupResult
+  } else if (isObject(setupResult)) {
+    instance.setupState = setupResult
+  }
+  finishComponentSetup(instance)
+}
+
+function finishComponentSetup(instance) {
+  let Component = instance.type
+  if (!instance.render) {
+    // 对template模板编译 产生render函数
+    if (!Component.render && Component.template) {
+      // 编译
+    }
+    instance.render = Component.render
+  }
+  console.log(instance.render.toString())
 }
 
 // 提取一些开发的时候用到的属性

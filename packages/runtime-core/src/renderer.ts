@@ -7,7 +7,11 @@ import { createAppApi } from './apiCreateApp'
 // 创建渲染器
 // rendererOptions: 告诉core怎么渲染
 export function createRenderer(rendererOptions) {
-  const setupRenderEffect = () => {}
+  const setupRenderEffect = (instance) => {
+    // 需要创建effect 在effect中调用render 这样render中访问的数据会收集这个effect
+    // 属性更新 effect 重新执行
+    instance.render()
+  }
   const mountComponent = (initalVNode, container) => {
     // 组件的挂载 => 实现组件的渲染流程
     // 核心：调用 setup 拿到返回值，获取render函数的返回的结果来进行渲染
@@ -18,7 +22,7 @@ export function createRenderer(rendererOptions) {
     // 2.需要的数据解析到实例上(给实例赋值)
     setupComponent(instance)
     // 3.创建一个effect 让render函数执行
-    setupRenderEffect()
+    setupRenderEffect(instance)
   }
   // n1:old n2:new
   const processComponent = (n1, n2, container) => {

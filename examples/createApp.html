@@ -16,9 +16,11 @@
     let { createApp } = VueRuntimeDOM
 
     let App = {
-      setup(props, context) {
-        console.log('doing setup')
-      },
+      // setup(props, context) {
+      //   return (proxy) => {
+      //     console.log('setup render')
+      //   }
+      // },
       render(proxy) {
         console.log('render')
         console.log(proxy.age, proxy.b, proxy.c)

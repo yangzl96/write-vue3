@@ -1,6 +1,10 @@
 import { isObject, isString, ShapeFlags, isArray } from '../../shared/src/index'
-// 创建虚拟节点
 
+export function isVnode(vnode) {
+  return vnode.__v_isVnode
+}
+
+// 创建虚拟节点
 export const createVNode = (type, props, children = null) => {
   // type 区分是组件 还是 普通的元素
 

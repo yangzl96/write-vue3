@@ -12,19 +12,25 @@
   <div id="app"></div>
   <script src="../node_modules/@vue/runtime-dom/dist/runtime-dom.global.js"></script>
   <script>
-    console.log(VueRuntimeDOM)
-    let { createApp } = VueRuntimeDOM
+    let { createApp, h } = VueRuntimeDOM
 
     let App = {
-      // setup(props, context) {
-      //   return (proxy) => {
-      //     console.log('setup render')
-      //   }
-      // },
-      render(proxy) {
-        console.log('render')
-        console.log(proxy.age, proxy.b, proxy.c)
-      }
+      setup(props, context) {
+        return (proxy) => {
+          console.log('setup render')
+          return h('div', {}, 'hello word')
+        }
+      },
+      // render(proxy) {
+      //   console.log('render')
+      //   // h写法
+      //   // h('div', {})
+      //   // h('div', 'hello word')
+      //   // h('div', {}, 'hello word')
+      //   // h('div', {}, [h('p'), h('span')])
+      //   // h('div', {}, h('p'), h('span'))
+      //   // return h('div', {}, 'hello word')
+      // }
     }
     let app = createApp(App, { name: 'zz', age: 12 })
     app.mount('#app')

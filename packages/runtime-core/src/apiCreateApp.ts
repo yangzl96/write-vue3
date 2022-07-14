@@ -19,7 +19,6 @@ export function createAppApi(render) {
 
         // 创建虚拟节点
         const vnode = createVNode(rootComponent, rootProps)
-        console.log(vnode)
         // 调用render
         render(vnode, container)
         app._container = container

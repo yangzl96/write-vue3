@@ -1,3 +1,4 @@
+import { effect } from '@vue/reactivity'
 import { ShapeFlags } from '@vue/shared'
 import {
   createComponentInstance,
@@ -7,10 +8,30 @@ import { createAppApi } from './apiCreateApp'
 // 创建渲染器
 // rendererOptions: 告诉core怎么渲染
 export function createRenderer(rendererOptions) {
-  const setupRenderEffect = (instance) => {
+  const setupRenderEffect = (instance, container) => {
     // 需要创建effect 在effect中调用render 这样render中访问的数据会收集这个effect
     // 属性更新 effect 重新执行
-    instance.render()
+
+    // 每个组件都有一个effect vue3是组件级别更新
+    // 数据变化会重新执行对应组件的effect
+    instance.update = effect(function componentEffect() {
+      if (!instance.isMounted) {
+        // 初次渲染
+        let proxyToUse = instance.proxy
+        // 渲染完组件后，拿到组件render函数的返回值
+        // subTree: vnode
+        let subTree = (instance.subTree = instance.render.call(
+          proxyToUse,
+          proxyToUse
+        ))
+
+        // 初始化 子树
+        patch(null, subTree, container)
+        instance.isMounted = true
+      } else {
+        // 更新逻辑
+      }
+    })
   }
   const mountComponent = (initalVNode, container) => {
     // 组件的挂载 => 实现组件的渲染流程
@@ -22,7 +43,7 @@ export function createRenderer(rendererOptions) {
     // 2.需要的数据解析到实例上(给实例赋值)
     setupComponent(instance)
     // 3.创建一个effect 让render函数执行
-    setupRenderEffect(instance)
+    setupRenderEffect(instance, container)
   }
   // n1:old n2:new
   const processComponent = (n1, n2, container) => {
@@ -39,8 +60,10 @@ export function createRenderer(rendererOptions) {
     const { shapeFlag } = n2
     if (shapeFlag & ShapeFlags.ELEMENT) {
       //元素
+      console.log('元素')
     } else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
       //组件
+      console.log('组件')
       processComponent(n1, n2, container)
     }
   }

@@ -21,9 +21,7 @@ export function createComponentInstance(vnode) {
   instance.ctx = {
     _: instance,
   }
-  console.log(1)
   console.log(instance)
-  console.log(1)
 
   return instance
 }
@@ -86,7 +84,6 @@ function finishComponentSetup(instance) {
     }
     instance.render = Component.render
   }
-  console.log(instance.render.toString())
 }
 
 // 提取一些开发的时候用到的属性

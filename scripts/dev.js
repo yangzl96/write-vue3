@@ -6,13 +6,7 @@
 const fs = require('fs')
 const execa = require('execa') //开启子进程
 
-const targets = fs.readdirSync('packages').filter(f => {
-  if (!fs.statSync(`packages/${f}`).isDirectory()) {
-    return false
-  } else {
-    return true
-  }
-})
+const target = 'runtime-dom'
 
 
 async function build(target) {
@@ -23,4 +17,4 @@ async function build(target) {
 }
 
 // 开发模式：单独打包某一个模块 并监听 -cw
-build('reactivity')
+build(target)

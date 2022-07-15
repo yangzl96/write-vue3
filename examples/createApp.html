@@ -12,13 +12,17 @@
   <div id="app"></div>
   <script src="../node_modules/@vue/runtime-dom/dist/runtime-dom.global.js"></script>
   <script>
-    let { createApp, h } = VueRuntimeDOM
+    let { createApp, h, reactive } = VueRuntimeDOM
 
     let App = {
       setup(props, context) {
+        let state = reactive({ name: 'zzz' })
+        let fn = function () {
+          state.name = 'wwww'
+        }
         return (proxy) => {
           console.log('setup render')
-          return h('div', {}, 'hello word')
+          return h('div', { onClick: fn }, state.name)
         }
       },
       // render(proxy) {

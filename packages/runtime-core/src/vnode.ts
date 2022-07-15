@@ -40,3 +40,11 @@ function normalizeChildren(vnode, children) {
   }
   vnode.shapeFlag = vnode.shapeFlag | type
 }
+
+export const Text = Symbol('Text')
+export function normalizeVNode(child) {
+  // 是对象 说明是h方法
+  if (isObject(child)) return child
+  // 创建文本节点
+  return createVNode(Text, null, String(child))
+}

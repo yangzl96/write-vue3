@@ -19,6 +19,7 @@ export function createRenderer(rendererOptions) {
     createComment: hostCreateComment,
     setText: hostSetText,
     setElementText: hostSetElementText,
+    nextSibling: hostNextSibling,
   } = rendererOptions
 
   // ----------------------------- 组件 ----------------------
@@ -46,6 +47,16 @@ export function createRenderer(rendererOptions) {
         } else {
           // 更新逻辑
           console.log('更新了')
+          // 上一次的树 老树
+          const prevTree = instance.subTree
+          let proxyToUse = instance.proxy
+          // 新的树
+          let nextTree = (instance.subTree = instance.render.call(
+            proxyToUse,
+            proxyToUse
+          ))
+          // 比对
+          patch(prevTree, nextTree, container)
         }
       },
       {
@@ -53,6 +64,7 @@ export function createRenderer(rendererOptions) {
       }
     )
   }
+
   const mountComponent = (initalVNode, container) => {
     // 组件的挂载 => 实现组件的渲染流程
     // 核心：调用 setup 拿到返回值，获取render函数的返回的结果来进行渲染
@@ -65,6 +77,7 @@ export function createRenderer(rendererOptions) {
     // 3.创建一个effect 让render函数执行
     setupRenderEffect(instance, container)
   }
+
   // n1:old n2:new
   const processComponent = (n1, n2, container) => {
     if (n1 === null) {
@@ -89,7 +102,8 @@ export function createRenderer(rendererOptions) {
       patch(null, child, container)
     }
   }
-  const mountElement = (vnode, container) => {
+
+  const mountElement = (vnode, container, anchor = null) => {
     // 递归渲染
     const { props, shapeFlag, type, children } = vnode
     let el = (vnode.el = hostCreateElement(type))
@@ -110,13 +124,58 @@ export function createRenderer(rendererOptions) {
       mountChildren(children, el)
     }
     // 插入元素
-    hostInsert(el, container)
+    // anchor 参照物 ，没有的话 就都是appendChild了，永远在最后面插入 那肯定是会出问题的
+    hostInsert(el, container, anchor)
   }
-  const processElement = (n1, n2, container) => {
+
+  // 对比属性
+  const patchProps = (oldProps, newProps, el) => {
+    if (oldProps !== newProps) {
+      for (let key in newProps) {
+        const prev = oldProps[key]
+        const next = newProps[key]
+        // 新老不一样
+        if (prev !== next) {
+          hostPatchProp(el, key, prev, next)
+        }
+      }
+      // 老的有 新的没有 删除
+      for (let key in oldProps) {
+        if (!(key in newProps)) {
+          hostPatchProp(el, key, oldProps[key], null)
+        }
+      }
+    }
+  }
+
+  const patchChildren = (n1, n2, container) => {
+    const c1 = n1.children // 老儿子
+    const c2 = n2.children // 新儿子
+
+    // 老的有儿子 新的没儿子
+    // 新的有儿子 老的没儿子
+    // 新老都有儿子
+    // 新老都是文本
+  }
+
+  const patchElement = (n1, n2, container) => {
+    // 走到这个方法说明 元素是相同节点 要复用 旧的赋值给新的
+    let el = (n2.el = n1.el)
+    // 更新属性 更新儿子
+    const oldProps = n1.props || {}
+    const newProps = n2.props || {}
+    // 属性比对
+    patchProps(oldProps, newProps, el)
+    // 儿子比对
+    patchChildren(n1, n2, container)
+  }
+
+  const processElement = (n1, n2, container, anchor) => {
     if (n1 === null) {
-      mountElement(n2, container)
+      mountElement(n2, container, anchor)
     } else {
       // 元素更新
+      patchElement(n1, n2, container)
     }
   }
   // ---------------------------------处理元素结束----------------------
@@ -127,15 +186,29 @@ export function createRenderer(rendererOptions) {
     if (n1 === null) {
       // n2.children: 文本的内容
       // 创建文本 插入
-      console.log(n2)
       hostInsert((n2.el = hostCreateText(n2.children)), container)
     }
   }
   // ---------------------------------处理文本结束---------------------
 
-  const patch = (n1, n2, container) => {
+  const isSameVNodeType = (n1, n2) => {
+    return n1.type === n2.type && n1.key === n2.key
+  }
+
+  const unmount = (n1) => {
+    hostRemove(n1.el)
+  }
+
+  const patch = (n1, n2, container, anchor = null) => {
     // 针对不同类型做初始化操作
     const { shapeFlag, type } = n2
+    // 标签不一样
+    if (n1 && !isSameVNodeType(n1, n2)) {
+      // 节点都不相同 把老的n1直接删掉 换成n2
+      anchor = hostNextSibling(n1.el) //获取下一个节点
+      unmount(n1)
+      n1 = null //n1为空了，往下走 processElement 就会重新渲染n2 对应的内容
+    }
     switch (type) {
       case Text:
         processText(n1, n2, container)
@@ -144,7 +217,7 @@ export function createRenderer(rendererOptions) {
         if (shapeFlag & ShapeFlags.ELEMENT) {
           //元素
           console.log('处理元素')
-          processElement(n1, n2, container)
+          processElement(n1, n2, container, anchor)
         } else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
           //组件
           console.log('处理组件')

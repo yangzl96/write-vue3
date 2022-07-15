@@ -148,7 +148,85 @@ export function createRenderer(rendererOptions) {
     }
   }
 
-  const patchChildren = (n1, n2, container) => {
+  // 比较两个带key的数组
+  const patchKeyedChildren = (c1, c2, el) => {
+    let i = 0 // 默认从头开始对比
+    let e1 = c1.length - 1
+    let e2 = c2.length - 1
+
+    // Vue3 对特殊情况进行优化
+    // 一直在确定一个范围
+    // 从到到尾一个个比较
+    // 有一个循环完 或者遇到不同的 就停止
+    // 尽可能的减少比对的区域
+    // 缩小前面的范围
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[i]
+      const n2 = c2[i]
+      if (isSameVNodeType(n1, n2)) {
+        // 如果是同一个节点，比属性，再比较儿子
+        patch(n1, n2, el)
+      } else {
+        break
+      }
+      i++
+    }
+
+    // 上面的策略比对完了就走这个策略
+    // 从尾到头比
+    // 缩小后面的范围
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[e1]
+      const n2 = c2[e2]
+      if (isSameVNodeType(n1, n2)) {
+        // 如果是同一个节点，比属性，再比较儿子
+        patch(n1, n2, el)
+      } else {
+        break
+      }
+      e1--
+      e2--
+    }
+
+    // 例如：
+    // a b c d
+    // a b e f c d
+    // 前后对比完后 剩下的就是 f c
+
+    // 比较后 有一方已经完全比对完成了
+    // 如何确定是要挂载？
+
+    // 如果完成后 最终 i > e1 说明i已经超过了 e1，那么就要新增了
+    if (i > e1) {
+      //老的少 新的多 要新增
+      if (i <= e2) {
+        // 想知道是向前插入 还是向后插入 找参照物
+        // 参照物：找当前元素( e2)的下一个， 有元素的话就是向前插入 没元素的话就是向后插入
+        const nextPos = e2 + 1
+        // nextPos < c2.length : 向前插入
+        //         a b :n1
+        // d e f e a b :n2
+        // 向后插入：
+        // a b :n1
+        // a b c d e f :n2
+        const anchor = nextPos < c2.length ? c2[nextPos].el : null
+        // 确定新增的部分
+        while (i <= e2) {
+          patch(null, c2[i], el, anchor)
+          i++
+        }
+      }
+    }
+  }
+
+  // 批量删除儿子
+  const unmountChildren = (children) => {
+    for (let i = 0; i < children.length; i++) {
+      unmount(children[i])
+    }
+  }
+  // 儿子比对
+  const patchChildren = (n1, n2, el) => {
     const c1 = n1.children // 老儿子
     const c2 = n2.children // 新儿子
 
@@ -156,6 +234,50 @@ export function createRenderer(rendererOptions) {
     // 新的有儿子 老的没儿子
     // 新老都有儿子
     // 新老都是文本
+
+    const prevShapeFlag = n1.shapeFlag
+    const shapeFlag = n2.shapeFlag
+    // 当前是文本
+    if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+      //case1:现在是文本 之前是数组
+      // 老的是n个孩子 但是新的是文本
+      if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+        unmountChildren(c1) //如果包含组件会调用组件的卸载
+      }
+      // 两个都是文本
+      if (c2 !== c1) {
+        //case2:现在之前都是文本
+        hostSetElementText(el, c2)
+      }
+    } else {
+      // 当前不是文本
+      // 上一次有可能是文本 或者 数组
+      // h('div',  [h('span', 'hello'), h('span', 'hello')])
+      if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+        //case3:现在之前都是数组
+        if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+          // 当前也是数组，比对两个数组
+          // 核心
+          patchKeyedChildren(c1, c2, el)
+        } else {
+          // 上一次是数组 这次不是文本 ，也不是数组
+          // 那就是 没有儿子，删掉老的
+          unmountChildren(c1)
+        }
+      } else {
+        // 当前不是文本
+        // 上一次不是数组
+        // 那么上一次可能是文本 清空
+        //case4:现在是数组都是文本
+        if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
+          hostSetElementText(el, '')
+        }
+        // 如果当前是数组 全部挂在
+        if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+          mountChildren(c2, el)
+        }
+      }
+    }
   }
 
   const patchElement = (n1, n2, container) => {
@@ -167,7 +289,7 @@ export function createRenderer(rendererOptions) {
     // 属性比对
     patchProps(oldProps, newProps, el)
     // 儿子比对
-    patchChildren(n1, n2, container)
+    patchChildren(n1, n2, el)
   }
 
   const processElement = (n1, n2, container, anchor) => {

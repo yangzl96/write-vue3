@@ -21,8 +21,18 @@
           flag.value = false
         }, 1500)
         return (proxy) => {
-          return flag.value ? h('div', { style: { color: 'red', backgroundColor: 'black' } }, 'aaaa')
-            : h('div', { style: { color: 'blue' } }, 'wwww')
+          return flag.value ? h('div', { style: { color: 'red' } }, [
+            h('li', { key: 'a' }, 'a'),
+            h('li', { key: 'b' }, 'b'),
+            h('li', { key: 'c' }, 'c'),
+          ])
+            : h('div', { style: { color: 'blue' } }, [
+              h('li', { key: 'd' }, 'd'),
+              h('li', { key: 'a' }, 'a'),
+              h('li', { key: 'b' }, 'b'),
+              h('li', { key: 'c' }, 'c'),
+
+            ])
         }
       },
     }

@@ -149,6 +149,8 @@ export function createRenderer(rendererOptions) {
   }
 
   // 比较两个带key的数组
+  // c1: 老的儿子列表
+  // c2: 新的儿子列表
   const patchKeyedChildren = (c1, c2, el) => {
     let i = 0 // 默认从头开始对比
     let e1 = c1.length - 1
@@ -193,12 +195,11 @@ export function createRenderer(rendererOptions) {
     // a b e f c d
     // 前后对比完后 剩下的就是 f c
 
-    // 比较后 有一方已经完全比对完成了
     // 如何确定是要挂载？
 
     // 如果完成后 最终 i > e1 说明i已经超过了 e1，那么就要新增了
     if (i > e1) {
-      //老的少 新的多 要新增
+      //老的少 新的多 前提：有一方已经比对完成了 要新增
       if (i <= e2) {
         // 想知道是向前插入 还是向后插入 找参照物
         // 参照物：找当前元素( e2)的下一个， 有元素的话就是向前插入 没元素的话就是向后插入
@@ -216,6 +217,44 @@ export function createRenderer(rendererOptions) {
           i++
         }
       }
+    } else if (i > e2) {
+      // 老的多 新的少 前提：有一方已经比对完成了
+      while (i <= e1) {
+        unmount(c1[i])
+        i++
+      }
+    } else {
+      // 到这里了 经过前面的从头到尾 从尾到头 ，已经确定了中间的乱序的范围
+      // 乱序比较，需要尽可能的复用 用新的元素做成映射表 去老的里面找
+      // 一样的就复用，不一样的要么插入，要么删除
+
+      let s1 = i
+      let s2 = i
+
+      // vue3用的是新的 做映射表，Vue2是用老的
+      const keyToNewIndexMap = new Map()
+
+      for (let i = s2; i <= e2; i++) {
+        const childVNode = c2[i] //新的
+        keyToNewIndexMap.set(childVNode.key, i)
+      }
+
+      // 去老的里面查找，有没有复用的
+      for (let i = s1; i <= e1; i++) {
+        const oldVnode = c1[i]
+        let newIndex = keyToNewIndexMap.get(oldVnode.key)
+        if (newIndex === undefined) {
+          // 老的里的元素不在新的里面
+          unmount(oldVnode)
+        } else {
+          // 新老比对
+          // 找到了对应的元素 再去做比对
+          patch(oldVnode, c2[newIndex], el)
+        }
+      }
+
+      // 最后就是移动节点，并且将新增的节点插入
+      // 最长递增子序列
     }
   }
 

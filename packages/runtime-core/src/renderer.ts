@@ -233,23 +233,63 @@ export function createRenderer(rendererOptions) {
 
       // vue3用的是新的 做映射表，Vue2是用老的
       const keyToNewIndexMap = new Map()
-
+      // 生成映射表 key => index
       for (let i = s2; i <= e2; i++) {
         const childVNode = c2[i] //新的
         keyToNewIndexMap.set(childVNode.key, i)
       }
 
+      // 确定要被patch的个数
+      const toBePatched = e2 - s1 + 1 //因为都是索引 所以 + 1
+      // 新的索引和老的索引做映射 默认4个0
+      const newIndexToOldIndexMap = new Array(toBePatched).fill(0)
+
       // 去老的里面查找，有没有复用的
       for (let i = s1; i <= e1; i++) {
+        // 取出老的
         const oldVnode = c1[i]
+        // 去新的里面找对应老的 获取到新的里面的索引
         let newIndex = keyToNewIndexMap.get(oldVnode.key)
         if (newIndex === undefined) {
           // 老的里的元素不在新的里面
           unmount(oldVnode)
         } else {
-          // 新老比对
+          // 新和老的 索引关系
+          // newIndex - s2 : 为了确保是在那个处理好的范围内
+          // i + 1: 为了处理出现 0 的情况，就和原有的数组 0 一样了，不好区分
+          // 这样没有被处理过的 值就是 0
+          newIndexToOldIndexMap[newIndex - s2] = i + 1
+          // 新老比对 做了复用
           // 找到了对应的元素 再去做比对
           patch(oldVnode, c2[newIndex], el)
+        }
+      }
+
+      // 移动
+      // 遍历那个处理好的范围，倒序插入，先插入最后一个，可以拿到参照物
+      for (let i = toBePatched - 1; i >= 0; i--) {
+        // 找到当前的索引 要在新的里面找 就要加上s2 确保索引，因为toBePatched就只是那个处理好的范围
+        let currentIndex = i + s2
+        let child = c2[currentIndex]
+        // 找到参照物 下一项有值 就说明是insertBefore 没有值就是appendChild
+        let anchor =
+          currentIndex + 1 < c2.length ? c2[currentIndex + 1].el : null
+
+        if (newIndexToOldIndexMap[i] == 0) {
+          // 没有被Patch过
+          // 新增 通过patch去创建虚拟节点，同时插入后会拥有真实节点
+          patch(null, child, el, anchor)
+        } else {
+          // 前面已经patch过的元素 再依次以以前一个为anchor 再插入
+          // 直接调用 hostInsert(child.el, el, anchor)
+          // 但是 是不是每个元素都重新操作了一遍？ 所有的都移动了
+          // 希望尽可能的少移动
+          // 看 newIndexToOldIndexMap ：[5,3,4,0] 这个不是新老索引的关系吗？
+          // 找到 最长的递增子序列 3 4 说明这两个不需要动，只需要动不连续的
+          // [1,2,3,4,5,6]
+          // [1,6,2,3,4,5]
+          // 是不是只需要动 6 其他的不用动
+          hostInsert(child.el, el, anchor)
         }
       }
 

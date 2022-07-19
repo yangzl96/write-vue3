@@ -265,7 +265,13 @@ export function createRenderer(rendererOptions) {
         }
       }
 
-      // 移动
+      // 最后就是移动节点，并且将新增的节点插入
+      // 最长递增子序列
+      // 例子：[5,3,4,0] => [1,2] 最长递增 索引
+      let increasingNewIndexSequence = getSequence(newIndexToOldIndexMap)
+      console.log(increasingNewIndexSequence)
+      // 取出最后一个的索引  1
+      let j = increasingNewIndexSequence.length - 1
       // 遍历那个处理好的范围，倒序插入，先插入最后一个，可以拿到参照物
       for (let i = toBePatched - 1; i >= 0; i--) {
         // 找到当前的索引 要在新的里面找 就要加上s2 确保索引，因为toBePatched就只是那个处理好的范围
@@ -286,16 +292,79 @@ export function createRenderer(rendererOptions) {
           // 希望尽可能的少移动
           // 看 newIndexToOldIndexMap ：[5,3,4,0] 这个不是新老索引的关系吗？
           // 找到 最长的递增子序列 3 4 说明这两个不需要动，只需要动不连续的
-          // [1,2,3,4,5,6]
-          // [1,6,2,3,4,5]
-          // 是不是只需要动 6 其他的不用动
-          hostInsert(child.el, el, anchor)
+
+          // 算法目的：求出连续最多的后，保证那些是不需要动的
+          // 不过 这里需要的是最长递增子序列对应的索引
+
+          // 例子：这时候的最长递增子序列索引 [1,2]
+          // toBePatched = 4 , i 的值 由 3,2,1,0 顺序 递减
+          // 当 i = 3 插入
+          // 当 i = 2 不需要移动 j--
+          // 当 i = 1 需要移动 j--
+          // 当 i = 0 插入
+
+          if (i != increasingNewIndexSequence[j]) {
+            hostInsert(child.el, el, anchor)
+          } else {
+            j-- //跳过不需要移动的元素
+          }
         }
       }
-
-      // 最后就是移动节点，并且将新增的节点插入
-      // 最长递增子序列
     }
+  }
+
+  // 获取最长递增子序列 O(nlogn)
+  function getSequence(arr) {
+    const len = arr.length
+    const result = [0]
+    const p = arr.slice(0) //里面内容无所谓 和原本的数组相同 用来存放索引
+    let start, end, middle
+    for (let i = 0; i < len; i++) {
+      const arrI = arr[i]
+      if (arrI !== 0) {
+        // 获取结果集的最后一个索引值
+        let resultLastIndex = result[result.length - 1]
+        // 前一个跟当前值比较
+        if (arr[resultLastIndex] < arrI) {
+          // 当前值大的话直接push
+          result.push(i)
+          // 并且记住当前值的前一个值的索引
+          p[i] = resultLastIndex
+          continue
+        }
+        // 当前值小的话 二分查找
+        start = 0
+        end = result.length - 1
+        while (start < end) {
+          // 重合就说明找到了
+          middle = ((start + end) / 2) | 0 //找到中间位置的前一个
+          // 当前值 大于 中间值 缩小范围
+          if (arrI > arr[result[middle]]) {
+            start = middle + 1
+          } else {
+            end = middle
+          }
+        }
+        // 找到比当前值大的数了 直接替换索引
+        if (arr[result[start]] > arrI) {
+          if (start > 0) {
+            // 大于 0 才替换 ，因为等于0的时候 前面没有值
+            // 记录前一个
+            p[i] = result[start - 1]
+          }
+          result[start] = i
+        }
+      }
+    }
+    // 根据前驱节点向前查找
+    // 从后往前找
+    let len1 = result.length //总长
+    let last = result[len1 - 1] // 最后一个
+    while (len1-- > 0) {
+      result[len1] = last
+      last = p[last]
+    }
+    return result
   }
 
   // 批量删除儿子

@@ -21,13 +21,14 @@
     //属性访问的时候 执行
     // console.log(myAge.value)
     // console.log(myAge.value) //缓存
-    // age.value = 100
-    // console.log(myAge.value)
+    age.value = 100
+    console.log(myAge.value)
 
     // 这个effect中没有 age 但是myAge依赖了 age 同时 age变更了
     // 那么这个effect是不是需要重新执行？
     effect(() => {
       console.log('effect')
+      // console.log(age.value);
       console.log(myAge.value)
     })
     age.value = 500

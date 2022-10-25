@@ -62,8 +62,8 @@ function createSetter(shallow = false) {
   return function set(target, key, value, receiver) {
     const oldValue = target[key] //获取老的值
 
-    // 判断是否有key 是数组的话话 比对长度,大于length是新增
-    // 否则 hasOwn 去检查key
+    // 判断是否有key 是数组的同时key是索引的话 比对长度,大于length是新增
+    // 否则 hasOwn 去检查key是否存在
     let hadKey =
       isArray(target) && isIntegerKey(key)
         ? Number(key) < target.length
